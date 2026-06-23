@@ -1,780 +1,877 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>信貸套利與基金配置試算器</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
-        /* Custom scrollbar for a cleaner look */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Range slider styling */
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 20px;
-            width: 20px;
-            border-radius: 50%;
-            background: #3b82f6;
-            cursor: pointer;
-            margin-top: -8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            transition: background 0.15s ease;
-        }
-        input[type=range].accent-purple-500::-webkit-slider-thumb {
-            background: #a855f7;
-        }
-        input[type=range].accent-amber-500::-webkit-slider-thumb {
-            background: #f59e0b;
-        }
-        input[type=range].accent-rose-500::-webkit-slider-thumb {
-            background: #f43f5e;
-        }
-        input[type=range].accent-emerald-500::-webkit-slider-thumb {
-            background: #10b981;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 6px;
-            cursor: pointer;
-            background: #e2e8f0;
-            border-radius: 3px;
-        }
-        input[type=range]:focus {
-            outline: none;
-        }
-        
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>信貸套利與基金配置試算器</title>
+<style>
+    :root {
+        --bg: #f1f5f9;
+        --card: #ffffff;
+        --border: #e2e8f0;
+        --text: #1e293b;
+        --muted: #64748b;
+        --faint: #94a3b8;
+        --blue: #3b82f6;
+        --purple: #a855f7;
+        --amber: #f59e0b;
+        --rose: #f43f5e;
+        --emerald: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+        font-family: 'PingFang TC', 'Microsoft JhengHei', 'Segoe UI', sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+
+    /* Header */
+    header { text-align: center; margin: 1rem 0 2.5rem; }
+    header h1 {
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.6rem;
+    }
+    header p { color: var(--muted); font-size: 1.05rem; }
+
+    /* Grid */
+    .grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+    @media (min-width: 900px) {
+        .grid { grid-template-columns: 5fr 7fr; align-items: start; }
+    }
+
+    .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    @media (min-width: 600px) { .card { padding: 2rem; } }
+
+    .card-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .card-title .dot { width: 0.65rem; height: 0.65rem; border-radius: 50%; background: var(--blue); }
+
+    /* Field block */
+    .field { margin-bottom: 1.5rem; }
+    .field-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        gap: 0.5rem;
+    }
+    .field-head label { font-weight: 600; color: #334155; font-size: 0.95rem; }
+    .field-val {
+        font-weight: 700;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+    }
+    .field-val input {
+        width: 7rem;
+        text-align: right;
+        background: transparent;
+        border: none;
+        outline: none;
+        font: inherit;
+        font-weight: 700;
+        color: inherit;
+    }
+    .field-val input::-webkit-outer-spin-button,
+    .field-val input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .field-val.c-emerald { color: var(--emerald); border-color: #a7f3d0; }
+    .field-val.c-blue   { color: var(--blue);    border-color: #bfdbfe; }
+    .field-val.c-purple { color: var(--purple);  border-color: #e9d5ff; }
+    .field-val.c-amber  { color: var(--amber);   border-color: #fde68a; }
+    .field-val.c-rose   { color: var(--rose);    border-color: #fecdd3; }
+    .field-suffix { color: var(--muted); font-weight: 600; font-size: 0.85rem; margin-left: 0.15rem; }
+
+    .field-foot {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.72rem;
+        color: var(--faint);
+        margin-top: 0.35rem;
+    }
+
+    /* Range slider */
+    input[type=range] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        background: transparent;
+        cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+        height: 6px; border-radius: 3px; background: var(--border);
+    }
+    input[type=range]::-moz-range-track {
+        height: 6px; border-radius: 3px; background: var(--border);
+    }
+    input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 20px; width: 20px; border-radius: 50%;
+        background: var(--blue); margin-top: -7px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        transition: background 0.15s ease;
+    }
+    input[type=range]::-moz-range-thumb {
+        height: 20px; width: 20px; border: none; border-radius: 50%;
+        background: var(--blue); box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    input[type=range].a-emerald::-webkit-slider-thumb { background: var(--emerald); }
+    input[type=range].a-emerald::-moz-range-thumb { background: var(--emerald); }
+    input[type=range].a-purple::-webkit-slider-thumb { background: var(--purple); }
+    input[type=range].a-purple::-moz-range-thumb { background: var(--purple); }
+    input[type=range].a-amber::-webkit-slider-thumb { background: var(--amber); }
+    input[type=range].a-amber::-moz-range-thumb { background: var(--amber); }
+    input[type=range].a-rose::-webkit-slider-thumb { background: var(--rose); }
+    input[type=range].a-rose::-moz-range-thumb { background: var(--rose); }
+    input[type=range]:focus { outline: none; }
+
+    /* Segmented control (buttons) */
+    .seg { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .seg button {
+        flex: 1 1 0;
+        min-width: 5rem;
+        padding: 0.6rem 0.5rem;
+        border: 1px solid var(--border);
+        background: #f8fafc;
+        color: var(--muted);
+        border-radius: 0.6rem;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .seg button:hover { border-color: #cbd5e1; }
+    .seg button.active {
+        background: var(--blue);
+        border-color: var(--blue);
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(59,130,246,0.35);
+    }
+    .seg.purple button.active { background: var(--purple); border-color: var(--purple); box-shadow: 0 2px 6px rgba(168,85,247,0.35); }
+
+    .hint {
+        font-size: 0.78rem;
+        color: var(--muted);
+        background: #f8fafc;
+        border: 1px dashed var(--border);
+        border-radius: 0.6rem;
+        padding: 0.6rem 0.75rem;
+        margin-top: 0.75rem;
+    }
+
+    /* Results */
+    .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 480px) { .results-grid { grid-template-columns: 1fr; } }
+
+    .stat {
+        border: 1px solid var(--border);
+        border-radius: 0.85rem;
+        padding: 1rem 1.1rem;
+        background: #fff;
+    }
+    .stat .k { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.35rem; }
+    .stat .v { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.01em; }
+    .stat .v small { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+    .stat .sub { font-size: 0.72rem; color: var(--faint); margin-top: 0.25rem; }
+
+    .stat.hero { grid-column: 1 / -1; }
+    .stat.hero.pos { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-color: #a7f3d0; }
+    .stat.hero.neg { background: linear-gradient(135deg, #fff1f2, #ffe4e6); border-color: #fecdd3; }
+    .stat.hero .v { font-size: 2rem; }
+    .v.pos { color: var(--emerald); }
+    .v.neg { color: var(--rose); }
+    .v.blue { color: var(--blue); }
+    .v.purple { color: var(--purple); }
+
+    .section-label {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #334155;
+        margin: 1.75rem 0 0.85rem;
+        display: flex; align-items: center; gap: 0.45rem;
+    }
+    .section-label .bar { width: 4px; height: 1rem; border-radius: 2px; background: var(--blue); }
+
+    /* Stress test alert */
+    .alert {
+        border-radius: 0.85rem;
+        padding: 1rem 1.1rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        display: flex; align-items: center; gap: 0.6rem;
+        grid-column: 1 / -1;
+    }
+    .alert.safe { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .alert.warn { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .alert.danger { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+    .alert .big { font-size: 1.3rem; }
+
+    footer { text-align: center; color: var(--faint); font-size: 0.78rem; margin: 2.5rem 0 1rem; }
+
+    /* 質押維持率長條圖 (橫向) */
+    .stress-panel {
+        border: 1px solid var(--border);
+        border-radius: 0.85rem;
+        padding: 1.25rem;
+        margin-top: 1rem;
+        background: #fff;
+    }
+    .bar-title {
+        font-size: 0.85rem; font-weight: 700; color: #334155;
+        display: flex; justify-content: space-between; align-items: baseline;
+        flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.7rem;
+    }
+    .bar-now { font-size: 1.05rem; font-weight: 800; color: var(--text); }
+
+    .bar-chart { margin-bottom: 0.85rem; }
+    .bar-track {
+        position: relative;
+        height: 28px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: linear-gradient(90deg,
+            #dcfce7 0%, #dcfce7 70%,
+            #fef9c3 70%, #fef9c3 85%,
+            #fee2e2 85%, #fee2e2 100%);
+    }
+    .bar-fill {
+        position: absolute; left: 0; top: 0; bottom: 0;
+        width: 0%;
+        border-radius: 5px;
+        background: #10b981;
+        transition: width 0.4s ease, background 0.4s ease;
+    }
+    .bar-mark {
+        position: absolute; top: 0; bottom: 0; width: 0;
+        border-left: 2px dashed #475569;
+        z-index: 2;
+    }
+    .bar-mark span {
+        position: absolute; top: -1.3rem; left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.6rem; font-weight: 700; color: #475569;
+        white-space: nowrap;
+    }
+    .bar-scale {
+        display: flex; justify-content: space-between;
+        font-size: 0.68rem; color: var(--faint); margin-top: 0.3rem;
+    }
+    .bar-legend {
+        display: flex; flex-wrap: wrap; gap: 0.6rem 1rem;
+        font-size: 0.72rem; color: var(--muted);
+        margin-bottom: 1.1rem;
+    }
+    .bar-legend .lg { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .bar-legend .lg i { width: 0.7rem; height: 0.7rem; border-radius: 2px; display: inline-block; }
+
+    .advice { display: flex; flex-direction: column; gap: 0.8rem; }
+    .advice-target {
+        border: 1px solid var(--border);
+        border-radius: 0.7rem;
+        padding: 0.8rem 0.9rem;
+        background: #f8fafc;
+    }
+    .advice-title { font-size: 0.88rem; font-weight: 700; color: #334155; margin-bottom: 0.6rem; }
+    .advice-title b.t85 { color: var(--rose); }
+    .advice-title b.t60 { color: var(--emerald); }
+    .advice-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    @media (max-width: 480px) { .advice-pair { grid-template-columns: 1fr; } }
+    .advice-opt {
+        display: flex; align-items: baseline; gap: 0.35rem; flex-wrap: wrap;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 0.55rem;
+        padding: 0.55rem 0.7rem;
+    }
+    .advice-opt span { font-size: 0.78rem; color: var(--muted); width: 100%; }
+    .advice-opt b { font-size: 1.15rem; font-weight: 800; color: var(--text); }
+    .advice-opt em { font-size: 0.75rem; font-style: normal; color: var(--muted); }
+    .advice-note { font-size: 0.74rem; color: var(--muted); line-height: 1.45; }
+
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+</style>
 </head>
-<body className="bg-slate-100 min-h-screen text-slate-800">
-    <div id="root"></div>
+<body>
+<div class="wrap">
+    <header>
+        <h1>被動收入：套利計算機</h1>
+        <p>透過「財務槓桿」打造「被動收入」</p>
+    </header>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+    <div class="grid">
+        <!-- ============ 左欄：參數設定 ============ -->
+        <section class="card">
+            <div class="card-title"><span class="dot"></span>條件設定</div>
 
-        const App = () => {
-            // Inputs state
-            const [loanAmount, setLoanAmount] = useState(1000000);
-            const [ownCapital, setOwnCapital] = useState(0); // 新增：自有本金
-            const [loanRate, setLoanRate] = useState(2.5);
-            const [loanYears, setLoanYears] = useState(7);
-            const [investRate, setInvestRate] = useState(6.0);
-            const [payoutFreq, setPayoutFreq] = useState(1); // 配息頻率：每月 1, 2, 4 次
-            
-            // 質押與策略相關 state
-            const [strategyMode, setStrategyMode] = useState('reinvest'); 
-            const [pledgeRatio, setPledgeRatio] = useState(60); 
-            const [pledgeRate, setPledgeRate] = useState(2.8); 
-
-            // 壓力測試相關 state
-            const [marketDrop, setMarketDrop] = useState(0); 
-            const [repayAmount, setRepayAmount] = useState(0); 
-
-            // Results state
-            const [results, setResults] = useState({
-                monthlyPayment: 0,
-                totalInterest: 0,
-                baseMonthlyIncome: 0, // 單次基準配息
-                monthlyIncome: 0,     // 每月總配息 (單次 x 頻率)
-                totalIncome: 0,
-                netProfit: 0,
-                monthlyCashFlow: 0,
-                pledgeAmount: 0,
-                monthlyPledgeInterest: 0,
-                totalInvestment: 0,
-                sponsorAmount: 0
-            });
-
-            // Format currency helper
-            const formatCurrency = (num) => {
-                if (num === Infinity || isNaN(num)) return "0";
-                return Math.round(num).toLocaleString('zh-TW');
-            };
-
-            // Calculate numbers
-            useEffect(() => {
-                const lAmt = Number(loanAmount);
-                const oAmt = Number(ownCapital);
-                const totalBaseAmt = lAmt + oAmt; // 合併總本金
-                const lRate = Number(loanRate) / 100;
-                const years = Number(loanYears);
-                const iRate = Number(investRate) / 100;
-                
-                const pRatio = Number(pledgeRatio) / 100;
-                const pRate = Number(pledgeRate) / 100;
-
-                const months = years * 12;
-                
-                // --- 第一層槓桿：信貸 (僅針對信貸金額計算) ---
-                const monthlyLoanRate = lRate / 12;
-                let monthlyPmt = 0;
-                if (lAmt > 0) {
-                    if (monthlyLoanRate === 0) {
-                        monthlyPmt = lAmt / months;
-                    } else {
-                        monthlyPmt = lAmt * (monthlyLoanRate * Math.pow(1 + monthlyLoanRate, months)) / (Math.pow(1 + monthlyLoanRate, months) - 1);
-                    }
-                }
-                const totalLoanInt = lAmt > 0 ? (monthlyPmt * months) - lAmt : 0;
-
-                // --- 第二層槓桿：依策略模式計算 (以合併總資金為基礎) ---
-                let pledgeAmt = 0;
-                let totalInvestAmt = 0;
-                let sponsorAmt = 0;
-
-                if (strategyMode === 'reinvest') {
-                    pledgeAmt = totalBaseAmt * pRatio;
-                    totalInvestAmt = totalBaseAmt + pledgeAmt;
-                } else {
-                    if (pRatio >= 1) {
-                         sponsorAmt = 0; 
-                    } else {
-                         sponsorAmt = (totalBaseAmt * pRatio) / (1 - pRatio);
-                    }
-                    totalInvestAmt = totalBaseAmt + sponsorAmt;
-                    pledgeAmt = totalInvestAmt * pRatio;
-                }
-                
-                const monthlyPledgeInt = (pledgeAmt * pRate) / 12;
-                const totalPledgeInt = monthlyPledgeInt * months;
-
-                // --- 投資與套利計算 (修正邏輯：次數直接倍增總收益) ---
-                const baseMonthlyInc = (totalInvestAmt * iRate) / 12; // 算出「單次基準金額」
-                const monthlyInc = baseMonthlyInc * payoutFreq;       // 每月總配息 = 單次基準 x 入帳次數
-                const totalInc = monthlyInc * months;                 // 總投資收益
-
-                const totalIntCosts = totalLoanInt + totalPledgeInt;
-                const profit = totalInc - totalIntCosts;
-                const cashFlow = monthlyInc - monthlyPmt - monthlyPledgeInt;
-
-                setResults({
-                    monthlyPayment: monthlyPmt,
-                    totalInterest: totalIntCosts,
-                    baseMonthlyIncome: baseMonthlyInc,
-                    monthlyIncome: monthlyInc,
-                    totalIncome: totalInc,
-                    netProfit: profit,
-                    monthlyCashFlow: cashFlow,
-                    pledgeAmount: pledgeAmt,
-                    monthlyPledgeInterest: monthlyPledgeInt,
-                    totalInvestment: totalInvestAmt,
-                    sponsorAmount: sponsorAmt
-                });
-            }, [loanAmount, ownCapital, loanRate, loanYears, investRate, payoutFreq, pledgeRatio, pledgeRate, strategyMode]);
-            
-            useEffect(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
-            });
-
-            return (
-                <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
-                    {/* Header */}
-                    <div className="text-center mb-10 mt-4">
-                        <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3 tracking-tight">借力使力：信貸套利試算器</h1>
-                        <p className="text-slate-500 text-lg">評估「低利借貸」投入「穩健基金」的財務槓桿效益</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                        {/* Left Column: Inputs */}
-                        <div className="lg:col-span-5 space-y-6 bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
-                            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 mb-6">
-                                <i data-lucide="sliders" className="w-5 h-5 text-blue-500"></i>
-                                參數設定
-                            </h2>
-
-                            {/* Own Capital */}
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="font-medium text-slate-700">自有本金 (免利息)</label>
-                                    <span className="font-bold text-emerald-600 border-b border-emerald-200">
-                                        <input 
-                                            type="number" 
-                                            value={ownCapital}
-                                            onChange={(e) => setOwnCapital(Number(e.target.value))}
-                                            className="w-24 text-right bg-transparent outline-none"
-                                            step="100000"
-                                        /> 元
-                                    </span>
-                                </div>
-                                <input 
-                                    type="range" 
-                                    min="0" max="10000000" step="100000"
-                                    value={ownCapital} 
-                                    onChange={(e) => setOwnCapital(e.target.value)}
-                                    className="accent-emerald-500"
-                                />
-                                <div className="flex justify-between text-xs text-slate-400 mt-1">
-                                    <span>0</span>
-                                    <span>1000萬</span>
-                                </div>
-                            </div>
-
-                            {/* Loan Amount */}
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="font-medium text-slate-700">信貸總額 (需還本付息)</label>
-                                    <span className="font-bold text-blue-600 border-b border-blue-200">
-                                        <input 
-                                            type="number" 
-                                            value={loanAmount}
-                                            onChange={(e) => setLoanAmount(Number(e.target.value))}
-                                            className="w-24 text-right bg-transparent outline-none"
-                                            step="100000"
-                                        /> 元
-                                    </span>
-                                </div>
-                                <input 
-                                    type="range" 
-                                    min="0" max="10000000" step="100000"
-                                    value={loanAmount} 
-                                    onChange={(e) => setLoanAmount(e.target.value)} 
-                                />
-                                <div className="flex justify-between text-xs text-slate-400 mt-1">
-                                    <span>0</span>
-                                    <span>1000萬</span>
-                                </div>
-                            </div>
-
-                            {/* Loan Rate & Years (動態隱藏) */}
-                            {Number(loanAmount) > 0 ? (
-                                <div className="grid grid-cols-2 gap-4 fade-in">
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <label className="font-medium text-slate-700 text-sm">信貸年利率</label>
-                                            <span className="font-bold text-rose-500">{loanRate}%</span>
-                                        </div>
-                                        <input 
-                                            type="range" min="1.5" max="15" step="0.1"
-                                            value={loanRate} onChange={(e) => setLoanRate(e.target.value)} 
-                                        />
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <label className="font-medium text-slate-700 text-sm">貸款年限 (試算區間)</label>
-                                            <span className="font-bold text-slate-800">{loanYears} 年</span>
-                                        </div>
-                                        <input 
-                                            type="range" min="1" max="10" step="1"
-                                            value={loanYears} onChange={(e) => setLoanYears(e.target.value)} 
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-lg flex items-center gap-2 fade-in">
-                                    <i data-lucide="check-circle" className="text-emerald-500 w-5 h-5"></i>
-                                    <span className="text-emerald-800 text-sm font-medium">目前無信貸，免負擔銀行還款壓力！</span>
-                                </div>
-                            )}
-
-                            <hr className="border-slate-100 my-4" />
-
-                            {/* Invest Rate & Payout Frequency */}
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="font-medium text-slate-700">單次基準預期年化率</label>
-                                    <span className="font-bold text-emerald-600 border-b border-emerald-200">
-                                        <input 
-                                            type="number" 
-                                            value={investRate}
-                                            onChange={(e) => setInvestRate(Number(e.target.value))}
-                                            className="w-16 text-right bg-transparent outline-none"
-                                            step="0.1"
-                                        /> %
-                                    </span>
-                                </div>
-                                <input 
-                                    type="range" 
-                                    min="2" max="12" step="0.5"
-                                    value={investRate} 
-                                    onChange={(e) => setInvestRate(e.target.value)} 
-                                    className="accent-emerald-500 mb-4"
-                                />
-                                
-                                {/* 配息頻率選擇 (火力全開) */}
-                                <div className="bg-emerald-50 p-4 rounded-xl border-2 border-emerald-200 mt-2 shadow-sm">
-                                    <label className="text-sm font-bold text-emerald-800 block mb-3 flex items-center gap-1">
-                                        <i data-lucide="rocket" className="w-5 h-5 text-emerald-600"></i>
-                                        選擇每月入帳頻率 (獲利倍增器)
-                                    </label>
-                                    <div className="flex gap-2">
-                                        {[1, 2, 4].map(freq => (
-                                            <button
-                                                key={freq}
-                                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${payoutFreq === freq ? 'bg-emerald-600 text-white shadow-md transform scale-105' : 'bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-100'}`}
-                                                onClick={() => setPayoutFreq(freq)}
-                                            >
-                                                {freq === 1 ? '單配 (1倍)' : freq === 2 ? '雙週配 (2倍)' : '4配 (4倍)'}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <div className="text-xs text-emerald-600 mt-2 text-center opacity-80">
-                                        * 基準金額不變，次數越多，每月實拿總現金越驚人！
-                                    </div>
-                                </div>
-                            </div>
-
-                            <hr className="border-slate-200 border-dashed my-6" />
-
-                            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
-                                <i data-lucide="zap" className="w-5 h-5 text-purple-500"></i>
-                                進階質押策略 (槓桿設定)
-                            </h2>
-
-                            {/* Strategy Toggle */}
-                            <div className="flex bg-slate-100 p-1 rounded-lg mb-6">
-                                <button
-                                    className={`flex-1 py-2 px-1 text-xs sm:text-sm font-medium rounded-md transition-all ${strategyMode === 'reinvest' ? 'bg-white shadow text-purple-700' : 'text-slate-500 hover:bg-slate-200'}`}
-                                    onClick={() => setStrategyMode('reinvest')}
-                                >
-                                    常規：質押再投入
-                                </button>
-                                <button
-                                    className={`flex-1 py-2 px-1 text-xs sm:text-sm font-medium rounded-md transition-all ${strategyMode === 'sponsor' ? 'bg-white shadow text-amber-600' : 'text-slate-500 hover:bg-slate-200'}`}
-                                    onClick={() => setStrategyMode('sponsor')}
-                                >
-                                    高階：金主過橋墊資
-                                </button>
-                            </div>
-
-                            {/* Strategy Info Box */}
-                            <div className={`p-4 rounded-lg mb-4 text-sm ${strategyMode === 'reinvest' ? 'bg-purple-50 text-purple-800 border border-purple-100' : 'bg-amber-50 text-amber-800 border border-amber-100'} fade-in`}>
-                                {strategyMode === 'reinvest' ? (
-                                    <p><strong>邏輯：</strong> 用信貸買入基金 ➔ 將基金質押借出現金 ➔ 將現金再次投入買基金，放大總資產。</p>
-                                ) : (
-                                    <p><strong>邏輯：</strong> 找金主先墊資 ➔ 加上信貸一次買足大額基金 ➔ 將基金質押 ➔ 借出現金「全數歸還金主」。達到空手套白狼放大資產的效果。</p>
-                                )}
-                            </div>
-
-                            {/* Pledge Ratio */}
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <label className="font-medium text-slate-700">
-                                        {strategyMode === 'reinvest' ? '基金質押額度 (再投入)' : '目標質押成數 (決定墊資倍數)'}
-                                    </label>
-                                    <span className={`font-bold border-b ${strategyMode === 'reinvest' ? 'text-purple-600 border-purple-200' : 'text-amber-600 border-amber-200'}`}>
-                                        <input 
-                                            type="number" 
-                                            value={pledgeRatio}
-                                            onChange={(e) => setPledgeRatio(Number(e.target.value))}
-                                            className="w-16 text-right bg-transparent outline-none"
-                                            step="5"
-                                            min="0"
-                                            max="60"
-                                        /> %
-                                    </span>
-                                </div>
-                                <input 
-                                    type="range" 
-                                    min="0" max="60" step="5"
-                                    value={pledgeRatio} 
-                                    onChange={(e) => setPledgeRatio(e.target.value)} 
-                                    className={strategyMode === 'reinvest' ? 'accent-purple-500' : 'accent-amber-500'}
-                                />
-                                <div className="flex justify-between text-xs text-slate-400 mt-1">
-                                    <span>0%</span>
-                                    <span>最高 60%</span>
-                                </div>
-                                
-                                {pledgeRatio > 0 && strategyMode === 'sponsor' && (
-                                    <div className="mt-3 space-y-1 fade-in">
-                                        <div className="text-sm text-slate-600 flex justify-between">
-                                            <span>需求金主墊資金額:</span>
-                                            <span className="font-bold text-amber-600">$ {formatCurrency(results.sponsorAmount)}</span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Pledge Rate */}
-                            {pledgeRatio > 0 && (
-                                <div className="mt-4 fade-in">
-                                    <div className="flex justify-between mb-2">
-                                        <label className="font-medium text-slate-700">質押年利率 (理財型)</label>
-                                        <span className="font-bold text-rose-500 border-b border-rose-200">
-                                            <input 
-                                                type="number" 
-                                                value={pledgeRate}
-                                                onChange={(e) => setPledgeRate(Number(e.target.value))}
-                                                className="w-20 text-right bg-transparent outline-none"
-                                                step="0.01"
-                                            /> %
-                                        </span>
-                                    </div>
-                                    <input 
-                                        type="range" 
-                                        min="1.5" max="6" step="0.01"
-                                        value={pledgeRate} 
-                                        onChange={(e) => setPledgeRate(e.target.value)} 
-                                    />
-                                    <div className="flex justify-between text-xs text-slate-400 mt-1">
-                                        <span>1.5%</span>
-                                        <span>6%</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* 壓力測試 Inputs */}
-                            {pledgeRatio > 0 && (
-                                <div className="mt-8 fade-in">
-                                    <hr className="border-slate-200 border-dashed mb-6" />
-                                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
-                                        <i data-lucide="shield-alert" className="w-5 h-5 text-rose-500"></i>
-                                        風險控管：壓力測試模擬
-                                    </h2>
-
-                                    {/* Market Drop */}
-                                    <div className="mb-6">
-                                        <div className="flex justify-between mb-2">
-                                            <label className="font-medium text-slate-700">基金淨值跌幅 (模擬虧損)</label>
-                                            <span className="font-bold text-rose-500 border-b border-rose-200">
-                                                <input 
-                                                    type="number" 
-                                                    value={marketDrop}
-                                                    onChange={(e) => setMarketDrop(Number(e.target.value))}
-                                                    className="w-16 text-right bg-transparent outline-none"
-                                                    step="1"
-                                                    min="0"
-                                                    max="100"
-                                                /> %
-                                            </span>
-                                        </div>
-                                        <input 
-                                            type="range" 
-                                            min="0" max="100" step="1"
-                                            value={marketDrop} 
-                                            onChange={(e) => setMarketDrop(e.target.value)} 
-                                            className="accent-rose-500"
-                                        />
-                                        <div className="flex justify-between text-xs text-slate-400 mt-1">
-                                            <span>0% (無虧損)</span>
-                                            <span>跌 100%</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Repay Amount */}
-                                    {marketDrop > 0 && (
-                                        <div className="fade-in">
-                                            <div className="flex justify-between mb-2">
-                                                <label className="font-medium text-slate-700">補繳資金 (償還質押借款)</label>
-                                                <span className="font-bold text-emerald-600 border-b border-emerald-200">
-                                                    <input 
-                                                        type="number" 
-                                                        value={repayAmount}
-                                                        onChange={(e) => setRepayAmount(Number(e.target.value))}
-                                                        className="w-24 text-right bg-transparent outline-none"
-                                                        step="10000"
-                                                        min="0"
-                                                        max={Math.round(results.pledgeAmount)}
-                                                    /> 元
-                                                </span>
-                                            </div>
-                                            <input 
-                                                type="range" 
-                                                min="0" max={Math.round(results.pledgeAmount)} step="10000"
-                                                value={repayAmount} 
-                                                onChange={(e) => setRepayAmount(e.target.value)} 
-                                                className="accent-emerald-500"
-                                            />
-                                            <div className="flex justify-between text-xs text-slate-400 mt-1">
-                                                <span>$0</span>
-                                                <span>還清借款</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                        </div>
-
-                        {/* Right Column: Results */}
-                        <div className="lg:col-span-7 space-y-6">
-                            {/* Investment Total Status */}
-                            <div className={`p-5 rounded-xl border flex flex-col sm:flex-row justify-between items-center gap-4 transition-colors ${strategyMode === 'reinvest' ? 'bg-indigo-50 border-indigo-100' : 'bg-slate-800 border-slate-700'}`}>
-                                <div>
-                                    <div className={`font-medium text-sm mb-1 ${strategyMode === 'reinvest' ? 'text-indigo-800' : 'text-slate-300'}`}>
-                                        總投資部位 (生息資產基數)
-                                    </div>
-                                    <div className={`text-3xl font-bold ${strategyMode === 'reinvest' ? 'text-indigo-900' : 'text-white'}`}>
-                                        $ {formatCurrency(results.totalInvestment)}
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-2 text-right">
-                                    <span className={`text-xs px-2 py-1 rounded-md shadow-sm border ${strategyMode === 'reinvest' ? 'bg-white text-indigo-600 border-indigo-100' : 'bg-slate-700 text-slate-300 border-slate-600'}`}>
-                                        初始總本金: {formatCurrency(Number(loanAmount) + Number(ownCapital))}
-                                    </span>
-                                    <div className="flex gap-1 justify-end">
-                                        {Number(ownCapital) > 0 && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">自有: {formatCurrency(ownCapital)}</span>}
-                                        {Number(loanAmount) > 0 && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">信貸: {formatCurrency(loanAmount)}</span>}
-                                    </div>
-                                    {pledgeRatio > 0 && strategyMode === 'reinvest' && (
-                                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-md shadow-sm border border-purple-200">
-                                            質押再投入: +{formatCurrency(results.pledgeAmount)}
-                                        </span>
-                                    )}
-                                    {pledgeRatio > 0 && strategyMode === 'sponsor' && (
-                                        <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded-md shadow-sm border border-amber-500/30">
-                                            過橋墊資: +{formatCurrency(results.sponsorAmount)}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Summary Cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-t-4 border-t-emerald-500">
-                                    <div className="text-slate-500 text-sm mb-2 flex items-center justify-between">
-                                        <span className="flex items-center gap-1"><i data-lucide="trending-up" className="w-4 h-4"></i> 總部位投資收益 ({loanYears}年)</span>
-                                    </div>
-                                    <div className="text-3xl font-bold text-slate-800 mt-1 mb-4">
-                                        $ {formatCurrency(results.totalIncome)}
-                                    </div>
-                                    
-                                    {/* 重新設計的配息明細區塊 - 強調單次不變，總計翻倍 */}
-                                    <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-200 mt-2 shadow-sm relative overflow-hidden">
-                                        {payoutFreq > 1 && <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg tracking-wider">現金流翻 {payoutFreq} 倍！</div>}
-                                        <div className="flex justify-between items-center mb-3 pb-3 border-b border-emerald-200/50">
-                                            <span className="text-sm font-medium text-emerald-800 flex items-center gap-1"><i data-lucide="coins" className="w-4 h-4"></i>單次實拿金額：</span>
-                                            <span className="font-bold text-emerald-600 text-xl">$ {formatCurrency(results.baseMonthlyIncome)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-end">
-                                            <div>
-                                                <span className="text-xs text-emerald-600 block mb-1">每月總計 (單次 x {payoutFreq}次)</span>
-                                                <span className="font-black text-emerald-700 text-3xl">$ {formatCurrency(results.monthlyIncome)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-t-4 border-t-rose-500">
-                                    <div className="text-slate-500 text-sm mb-1 flex items-center gap-1">
-                                        <i data-lucide="landmark" className="w-4 h-4"></i> 總利息成本 (信貸+質押)
-                                    </div>
-                                    <div className="text-3xl font-bold text-slate-800 mt-1">
-                                        $ {formatCurrency(results.totalInterest)}
-                                    </div>
-                                    <div className="text-xs text-rose-600 mt-2 bg-rose-50 inline-block px-2 py-1 rounded">
-                                        包含信貸本利與質押純繳息
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Big Result Card */}
-                            <div className="bg-gradient-to-br from-blue-600 to-indigo-800 p-8 rounded-2xl shadow-lg text-white relative overflow-hidden">
-                                <div className="absolute top-0 right-0 opacity-10">
-                                    <i data-lucide="pie-chart" className="w-48 h-48 -mr-10 -mt-10"></i>
-                                </div>
-                                <div className="relative z-10">
-                                    <h3 className="text-blue-100 text-lg mb-2 font-medium">期末淨套利獲利 (總收益 - 總利息)</h3>
-                                    <div className="text-5xl md:text-6xl font-bold mb-4 tracking-tight">
-                                        $ {formatCurrency(results.netProfit)}
-                                    </div>
-                                    <p className="text-blue-200 text-sm md:text-base leading-relaxed">
-                                        {strategyMode === 'reinvest' 
-                                            ? `透過試算區間的時間，利用這筆資金創造了 ${formatCurrency(results.netProfit)} 元的淨財富。到期信貸清償完畢，扣除質押本金後，你還完整擁有當初的 ${formatCurrency(Number(loanAmount) + Number(ownCapital))} 元生息資產！`
-                                            : `透過完美運用金主槓桿，你用 ${formatCurrency(Number(loanAmount) + Number(ownCapital))} 的初始資金控制了 ${formatCurrency(results.totalInvestment)} 的資產。期滿清償信貸與質押後，你淨賺了利差，更養大了整包資產！`
-                                        }
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Cash Flow Reality Check */}
-                            <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
-                                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <i data-lucide="scale" className="w-5 h-5 text-blue-500"></i>
-                                    每月現金流真相 (壓力測試)
-                                </h3>
-                                
-                                <div className="space-y-4">
-                                    {Number(loanAmount) > 0 && (
-                                        <div className="flex justify-between items-center py-2 border-b border-slate-100 fade-in">
-                                            <span className="text-slate-600">每月需繳信貸 (本金+利息)</span>
-                                            <span className="font-semibold text-rose-500">- $ {formatCurrency(results.monthlyPayment)}</span>
-                                        </div>
-                                    )}
-                                    {pledgeRatio > 0 && (
-                                        <div className="flex justify-between items-center py-2 border-b border-slate-100 bg-rose-50/50 px-2 -mx-2 rounded">
-                                            <span className="text-slate-600">每月需繳質押利息 (純繳息)</span>
-                                            <span className="font-semibold text-rose-500">- $ {formatCurrency(results.monthlyPledgeInterest)}</span>
-                                        </div>
-                                    )}
-                                    <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                                        <span className="text-slate-600">每月總配息收入 (單次 {formatCurrency(results.baseMonthlyIncome)} x {payoutFreq}次)</span>
-                                        <span className="font-semibold text-emerald-500">+ $ {formatCurrency(results.monthlyIncome)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-3 bg-slate-50 px-4 rounded-lg">
-                                        <span className="font-bold text-slate-800">每月現金流結算</span>
-                                        <span className={`font-bold ${results.monthlyCashFlow >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                            {results.monthlyCashFlow >= 0 ? '+' : ''}$ {formatCurrency(results.monthlyCashFlow)}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="mt-5 p-4 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-800 leading-relaxed">
-                                    <strong className="flex items-center gap-1 mb-1"><i data-lucide="info" className="w-4 h-4"></i> 顧問解說：</strong>
-                                    {strategyMode === 'sponsor' && (
-                                        <span className="block mb-2 font-medium text-amber-700">
-                                            【金主退場機制】：質押出來的 $ {formatCurrency(results.pledgeAmount)} 已在第一天全數還給金主，因此後續無需負擔金主利息，你欠的只有銀行的信貸與質押款。
-                                        </span>
-                                    )}
-                                    {Number(loanAmount) > 0 ? (
-                                        <span>很多客戶擔心「現金流結算是負的」。請記住，每月還款中包含了<strong>「償還信貸本金」</strong>。這筆缺口實際上是<strong>「強迫儲蓄」</strong>，正在幫你買下這龐大的生息資產。只要預備金充足，你賺取的是長線放大的「淨資產利差」！</span>
-                                    ) : (
-                                        <span className="font-medium text-emerald-700">由於全數使用自有本金，無需負擔信貸的還本壓力。您每月的配息扣除極低的質押純繳息後，絕大部分都是直接落入口袋的「正現金流」！這就是用錢賺錢的威力。</span>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Risk & Maintenance Ratio Section */}
-                            {pledgeRatio > 0 && (
-                                (() => {
-                                    const pRatio = Number(pledgeRatio) / 100;
-                                    const pledgedCollateral = pRatio > 0 ? results.pledgeAmount / pRatio : 0;
-                                    const newCollateralValue = pledgedCollateral * (1 - marketDrop / 100);
-                                    
-                                    const currentLoan = results.pledgeAmount;
-                                    const actualRepay = Math.min(repayAmount, currentLoan);
-                                    const newLoan = currentLoan - actualRepay;
-                                    
-                                    const currentLTV = newCollateralValue > 0 ? (currentLoan / newCollateralValue) * 100 : (currentLoan > 0 ? Infinity : 0);
-                                    const afterRepayLTV = newCollateralValue > 0 ? (newLoan / newCollateralValue) * 100 : (newLoan > 0 ? Infinity : 0);
-
-                                    const callThresholdLTV = 85; 
-                                    const safeThresholdLTV = 70; 
-                                    
-                                    const requiredRepayForCall = Math.max(0, currentLoan - (newCollateralValue * (callThresholdLTV / 100)));
-                                    const requiredRepayForSafe = Math.max(0, currentLoan - (newCollateralValue * (safeThresholdLTV / 100)));
-
-                                    return (
-                                        <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 fade-in mt-6">
-                                            <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                                <i data-lucide="siren" className="w-5 h-5 text-rose-500"></i>
-                                                維持率與斷頭風險評估 (質借率 LTV)
-                                            </h3>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                                    <div className="text-slate-500 text-sm mb-1">質押部位初始現值</div>
-                                                    <div className="text-xl font-bold text-slate-800">$ {formatCurrency(pledgedCollateral)}</div>
-                                                </div>
-                                                <div className="bg-rose-50 p-4 rounded-xl border border-rose-100 relative overflow-hidden">
-                                                    {marketDrop > 0 && <div className="absolute top-0 right-0 bg-rose-500 text-white text-xs px-2 py-1 rounded-bl-lg">虧損 {marketDrop}%</div>}
-                                                    <div className="text-rose-600 text-sm mb-1">模擬跌幅後現值</div>
-                                                    <div className="text-xl font-bold text-rose-700">$ {formatCurrency(newCollateralValue)}</div>
-                                                </div>
-                                            </div>
-
-                                            {/* 維持率/質借率進度條 */}
-                                            <div className="mb-6">
-                                                <div className="flex justify-between items-end mb-2">
-                                                    <div>
-                                                        <span className="text-slate-600 text-sm block">模擬維持率 (借款/基金現值)</span>
-                                                        <span className={`text-3xl font-bold ${currentLTV >= callThresholdLTV ? 'text-rose-600' : currentLTV >= safeThresholdLTV ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                                            {currentLTV === Infinity ? '> 999%' : `${currentLTV.toFixed(1)}%`}
-                                                        </span>
-                                                    </div>
-                                                    {actualRepay > 0 && (
-                                                        <div className="text-right">
-                                                            <span className="text-emerald-600 text-sm block">補繳資金後維持率</span>
-                                                            <span className="text-2xl font-bold text-emerald-600">
-                                                                {afterRepayLTV === Infinity && newLoan > 0 ? '> 999%' : afterRepayLTV === 0 ? '無借款' : `${afterRepayLTV.toFixed(1)}%`}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                
-                                                <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden flex relative">
-                                                    <div className="h-full bg-emerald-500" style={{ width: '70%' }}></div>
-                                                    <div className="h-full bg-amber-400" style={{ width: '15%' }}></div>
-                                                    <div className="h-full bg-rose-500" style={{ width: '15%' }}></div>
-                                                    
-                                                    <div 
-                                                        className={`absolute top-0 bottom-0 w-1.5 z-10 transition-all duration-300 ${actualRepay > 0 ? 'bg-slate-300 opacity-50' : 'bg-slate-900'}`}
-                                                        style={{ 
-                                                            left: `${Math.min(99, currentLTV)}%`,
-                                                            boxShadow: '0 0 4px rgba(0,0,0,0.5)'
-                                                        }}
-                                                    ></div>
-                                                    {actualRepay > 0 && afterRepayLTV !== Infinity && (
-                                                        <div 
-                                                            className="absolute top-0 bottom-0 w-1.5 bg-emerald-900 z-20 transition-all duration-300"
-                                                            style={{ 
-                                                                left: `${Math.min(99, afterRepayLTV)}%`,
-                                                                boxShadow: '0 0 4px rgba(0,0,0,0.8)'
-                                                            }}
-                                                        ></div>
-                                                    )}
-                                                </div>
-                                                <div className="flex justify-between text-xs mt-1 text-slate-400 relative">
-                                                    <span>0% (極安全)</span>
-                                                    <div className="absolute left-[70%] -translate-x-1/2 flex flex-col items-center">
-                                                        <span className="text-amber-600 font-medium">70%</span>
-                                                        <span className="text-[10px]">警戒線</span>
-                                                    </div>
-                                                    <div className="absolute left-[85%] -translate-x-1/2 flex flex-col items-center">
-                                                        <span className="text-rose-500 font-medium">85%</span>
-                                                        <span className="text-[10px]">斷頭線</span>
-                                                    </div>
-                                                    <span>100%+ (爆倉)</span>
-                                                </div>
-                                            </div>
-
-                                            {/* 補繳建議 */}
-                                            {currentLTV > safeThresholdLTV && marketDrop > 0 && (
-                                                <div className={`mt-4 p-4 rounded-lg border leading-relaxed fade-in ${currentLTV >= callThresholdLTV ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
-                                                    <strong className={`flex items-center gap-1 mb-1 ${currentLTV >= callThresholdLTV ? 'text-rose-700' : 'text-amber-700'}`}>
-                                                        <i data-lucide="alert-triangle" className="w-4 h-4"></i> 
-                                                        {currentLTV >= callThresholdLTV ? '斷頭警示與補繳建議：' : '維持率過高警戒建議：'}
-                                                    </strong>
-                                                    
-                                                    {currentLTV >= callThresholdLTV && (
-                                                        <span>目前維持率已超過 {callThresholdLTV}% 斷頭門檻！需至少補繳 <strong>$ {formatCurrency(requiredRepayForCall)}</strong> 才能免於斷頭。<br/></span>
-                                                    )}
-                                                    建議可補繳（償還借款） <strong>$ {formatCurrency(requiredRepayForSafe)}</strong>，讓維持率降低回到 {safeThresholdLTV}% 以下的安全水位。<br/>
-                                                    
-                                                    <div className="text-xs mt-3 pt-2 border-t border-black/10 opacity-80">
-                                                        (顧問觀念釐清：補入資金會讓「借款餘額」減少也就是分子變小，因此數學上維持率的數字就會「往下降」，幫助您遠離 {callThresholdLTV}% 斷頭線！)
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })()
-                            )}
-                        </div>
-                    </div>
-                    
-                    {/* Disclaimer */}
-                    <div className="text-center text-xs text-slate-400 mt-10 pb-8">
-                        * 本試算工具僅供觀念展示與參考，實際貸款利率與額度依各銀行核貸結果為準。<br/>
-                        * 投資一定有風險，基金投資有賺有賠，申購前應詳閱公開說明書，過去之績效不代表未來表現之保證。
-                    </div>
+            <!-- 自有本金 -->
+            <div class="field">
+                <div class="field-head">
+                    <label for="ownCapital">自有本金 (免利息)</label>
+                    <span class="field-val c-emerald">
+                        <input type="number" id="ownCapital" value="0" step="100000" min="0">
+                        <span class="field-suffix">元</span>
+                    </span>
                 </div>
-            );
-        };
+                <input type="range" id="ownCapitalRange" class="a-emerald" min="0" max="10000000" step="100000" value="0">
+                <div class="field-foot"><span>0</span><span>1,000 萬</span></div>
+            </div>
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+            <!-- 信貸金額 -->
+            <div class="field">
+                <div class="field-head">
+                    <label for="loanAmount">信貸金額</label>
+                    <span class="field-val c-blue">
+                        <input type="number" id="loanAmount" value="1000000" step="100000" min="0">
+                        <span class="field-suffix">元</span>
+                    </span>
+                </div>
+                <input type="range" id="loanAmountRange" min="0" max="10000000" step="100000" value="1000000">
+                <div class="field-foot"><span>0</span><span>1,000 萬</span></div>
+            </div>
 
-        // Initialize Lucide icons after render
-        setTimeout(() => {
-            lucide.createIcons();
-        }, 100);
-    </script>
+            <!-- 信貸利率 -->
+            <div class="field">
+                <div class="field-head">
+                    <label for="loanRate">信貸年利率</label>
+                    <span class="field-val c-blue">
+                        <input type="number" id="loanRate" value="2.5" step="0.01" min="0" max="15.99">
+                        <span class="field-suffix">%</span>
+                    </span>
+                </div>
+                <input type="range" id="loanRateRange" min="0" max="15.99" step="0.01" value="2.5">
+                <div class="field-foot"><span>0%</span><span>15.99%</span></div>
+            </div>
+
+            <!-- 信貸年期 -->
+            <div class="field">
+                <div class="field-head">
+                    <label for="loanYears">信貸年期</label>
+                    <span class="field-val c-blue">
+                        <input type="number" id="loanYears" value="7" step="1" min="1" max="10">
+                        <span class="field-suffix">年</span>
+                    </span>
+                </div>
+                <input type="range" id="loanYearsRange" min="1" max="10" step="1" value="7">
+                <div class="field-foot"><span>1 年</span><span>10 年</span></div>
+            </div>
+
+            <!-- 投資配息率 -->
+            <div class="field">
+                <div class="field-head">
+                    <label for="investRate">投資年化配息率</label>
+                    <span class="field-val c-amber">
+                        <input type="number" id="investRate" value="6.0" step="0.1" min="0">
+                        <span class="field-suffix">%</span>
+                    </span>
+                </div>
+                <input type="range" id="investRateRange" class="a-amber" min="0" max="15" step="0.1" value="6.0">
+                <div class="field-foot"><span>0%</span><span>15%</span></div>
+            </div>
+
+            <!-- 配息頻率 -->
+            <div class="field">
+                <div class="field-head"><label>配息頻率 (每月入帳次數)</label></div>
+                <div class="seg" id="payoutFreq">
+                    <button type="button" data-val="1" class="active">每月 1 次</button>
+                    <button type="button" data-val="2">每月 2 次</button>
+                    <button type="button" data-val="4">每週 (4 次)</button>
+                </div>
+            </div>
+
+            <div class="section-label"><span class="bar"></span>第二層槓桿：質押策略</div>
+
+            <!-- 策略模式 -->
+            <div class="field">
+                <div class="field-head"><label>策略模式</label></div>
+                <div class="seg purple" id="strategyMode">
+                    <button type="button" data-val="reinvest" class="active">質押再投入</button>
+                    <button type="button" data-val="sponsor">金主方案</button>
+                </div>
+                <div class="hint" id="strategyHint"></div>
+            </div>
+
+            <!-- 質押比例 -->
+            <div class="field">
+                <div class="field-head">
+                    <label for="pledgeRatio">質押成數</label>
+                    <span class="field-val c-purple">
+                        <input type="number" id="pledgeRatio" value="60" step="5" min="0" max="60">
+                        <span class="field-suffix">%</span>
+                    </span>
+                </div>
+                <input type="range" id="pledgeRatioRange" class="a-purple" min="0" max="60" step="5" value="60">
+                <div class="field-foot"><span>0%</span><span>60%</span></div>
+            </div>
+
+            <!-- 質押利率 -->
+            <div class="field">
+                <div class="field-head">
+                    <label for="pledgeRate">質押年利率</label>
+                    <span class="field-val c-purple">
+                        <input type="number" id="pledgeRate" value="2.8" step="0.1" min="0">
+                        <span class="field-suffix">%</span>
+                    </span>
+                </div>
+                <input type="range" id="pledgeRateRange" class="a-purple" min="0" max="10" step="0.1" value="2.8">
+                <div class="field-foot"><span>0%</span><span>10%</span></div>
+            </div>
+
+            <div class="section-label"><span class="bar" style="background:var(--rose)"></span>風險測試</div>
+
+            <!-- 市場下跌 -->
+            <div class="field">
+                <div class="field-head">
+                    <label for="marketDrop">市場下跌幅度</label>
+                    <span class="field-val c-rose">
+                        <input type="number" id="marketDrop" value="0" step="1" min="0" max="80">
+                        <span class="field-suffix">%</span>
+                    </span>
+                </div>
+                <input type="range" id="marketDropRange" class="a-rose" min="0" max="80" step="1" value="0">
+                <div class="field-foot"><span>0%</span><span>80%</span></div>
+            </div>
+
+            <!-- 單追(加碼)：墊高分母（剩餘資產） -->
+            <div class="field">
+                <div class="field-head">
+                    <label for="addCollateral">單追(加碼)</label>
+                    <span class="field-val c-rose">
+                        <input type="number" id="addCollateral" value="0" step="100000" min="0">
+                        <span class="field-suffix">元</span>
+                    </span>
+                </div>
+                <input type="range" id="addCollateralRange" class="a-rose" min="0" max="10000000" step="100000" value="0">
+                <div class="field-foot"><span>0</span><span>1,000 萬</span></div>
+            </div>
+
+            <!-- 降低借貸金額(還款)：減少分子（借款） -->
+            <div class="field" style="margin-bottom:0;">
+                <div class="field-head">
+                    <label for="repayAmount">降低借貸金額(還款)</label>
+                    <span class="field-val c-rose">
+                        <input type="number" id="repayAmount" value="0" step="100000" min="0">
+                        <span class="field-suffix">元</span>
+                    </span>
+                </div>
+                <input type="range" id="repayAmountRange" class="a-rose" min="0" max="10000000" step="100000" value="0">
+                <div class="field-foot"><span>0</span><span>1,000 萬</span></div>
+            </div>
+        </section>
+
+        <!-- ============ 右欄：試算結果 ============ -->
+        <section class="card">
+            <div class="card-title"><span class="dot" style="background:var(--emerald)"></span>試算結果</div>
+
+            <div class="results-grid">
+                <!-- Hero：每月現金流 -->
+                <div class="stat hero" id="cashFlowCard">
+                    <div class="k">每月淨現金流 (配息 − 信貸月付 − 質押利息)</div>
+                    <div class="v" id="cashFlow">0</div>
+                    <div class="sub" id="cashFlowSub"></div>
+                </div>
+
+                <div class="stat">
+                    <div class="k">每月配息收入</div>
+                    <div class="v" id="monthlyIncome">0</div>
+                    <div class="sub" id="incomeSub"></div>
+                </div>
+                <div class="stat">
+                    <div class="k">每月信貸月付</div>
+                    <div class="v" id="monthlyPayment">0</div>
+                    <div class="sub">本利攤還</div>
+                </div>
+
+                <div class="stat">
+                    <div class="k">質押借款金額</div>
+                    <div class="v purple" id="pledgeAmount">0</div>
+                    <div class="sub" id="pledgeSub"></div>
+                </div>
+                <div class="stat">
+                    <div class="k">每月質押利息</div>
+                    <div class="v purple" id="pledgeInterest">0</div>
+                    <div class="sub">第二層槓桿成本</div>
+                </div>
+
+                <div class="stat">
+                    <div class="k">總投入資金</div>
+                    <div class="v blue" id="totalInvestment">0</div>
+                    <div class="sub">本金 + 槓桿</div>
+                </div>
+                <div class="stat">
+                    <div class="k">資金槓桿倍數</div>
+                    <div class="v blue" id="leverage">0x</div>
+                    <div class="sub">總投入 ÷ (自有本金 + 信貸金額)</div>
+                </div>
+            </div>
+
+            <div class="section-label"><span class="bar" style="background:var(--emerald)"></span>每年損益（年均）</div>
+
+            <div class="results-grid">
+                <div class="stat hero" id="profitCard">
+                    <div class="k">每年淨利 (年配息 − 年均利息成本)</div>
+                    <div class="v" id="netProfit">0</div>
+                    <div class="sub" id="roiSub"></div>
+                </div>
+                <div class="stat">
+                    <div class="k">每年投資收益</div>
+                    <div class="v pos" id="totalIncome">0</div>
+                </div>
+                <div class="stat">
+                    <div class="k">每年利息成本</div>
+                    <div class="v neg" id="totalInterest">0</div>
+                </div>
+            </div>
+
+            <div class="section-label"><span class="bar" style="background:var(--rose)"></span>風險測試結果</div>
+            <div class="results-grid">
+                <div class="stat">
+                    <div class="k">下跌後資產價值</div>
+                    <div class="v" id="stressedValue">0</div>
+                    <div class="sub" id="stressedSub"></div>
+                </div>
+                <div class="stat">
+                    <div class="k">質押維持率 (借款 ÷ 剩餘資產)</div>
+                    <div class="v" id="maintenanceRatio">—</div>
+                    <div class="sub">安全 &lt; 70%；70% 通知；達 85% 補繳</div>
+                </div>
+                <div class="alert safe" id="stressAlert">
+                    <span class="big">✓</span>
+                    <span id="stressMsg">尚未設定質押或下跌情境，無補繳風險。</span>
+                </div>
+            </div>
+
+            <!-- 質押維持率長條圖 + 補繳建議 -->
+            <div class="stress-panel">
+                <div class="bar-title">質押維持率水位（借款 ÷ 剩餘資產）<span class="bar-now" id="barNow">目前 0%</span></div>
+                <div class="bar-chart">
+                    <div class="bar-track">
+                        <div class="bar-fill" id="barFill"></div>
+                        <div class="bar-mark" style="left:70%"><span>70% 安全線</span></div>
+                        <div class="bar-mark" style="left:85%"><span>85% 補繳</span></div>
+                    </div>
+                    <div class="bar-scale"><span>0%</span><span>50%</span><span>100%</span></div>
+                </div>
+                <div class="bar-legend">
+                    <span class="lg"><i style="background:#10b981"></i>70% 以內・安全</span>
+                    <span class="lg"><i style="background:#f59e0b"></i>70%–85%・通知</span>
+                    <span class="lg"><i style="background:#e11d48"></i>85% 以上・補繳</span>
+                </div>
+
+                <div class="advice">
+                    <div class="advice-target">
+                        <div class="advice-title">回到 <b class="t85">85%</b> 補繳線內 — 二擇一</div>
+                        <div class="advice-pair">
+                            <div class="advice-opt"><span>降低借貸（還款）</span><b id="repay85">0</b><em>元</em></div>
+                            <div class="advice-opt"><span>單追（加碼）</span><b id="coll85">0</b><em>元</em></div>
+                        </div>
+                    </div>
+                    <div class="advice-target">
+                        <div class="advice-title">回到 <b class="t60">70%</b> 安全水位 — 二擇一</div>
+                        <div class="advice-pair">
+                            <div class="advice-opt"><span>降低借貸（還款）</span><b id="repay60">0</b><em>元</em></div>
+                            <div class="advice-opt"><span>單追（加碼）</span><b id="coll60">0</b><em>元</em></div>
+                        </div>
+                    </div>
+                    <div class="advice-note" id="adviceNote"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        本工具僅供財務試算與教育用途，不構成任何投資建議。投資有風險，槓桿會同時放大獲利與虧損。
+    </footer>
+</div>
+
+<script>
+(function () {
+    "use strict";
+
+    // ---- 質押維持率門檻 (借款 ÷ 剩餘資產，越高越危險) ----
+    var MARGIN_CALL = 0.85;   // ≥ 85% 觸發補繳 (Margin Call)
+    var NOTIFY_LINE = 0.70;   // ≥ 70% 券商通知
+    var SAFE_LEVEL  = 0.70;   // 建議回到的安全水位
+
+    // 雙向綁定：number 輸入框 <-> range 滑桿
+    var pairs = [
+        "ownCapital", "loanAmount", "loanRate", "loanYears",
+        "investRate", "pledgeRatio", "pledgeRate",
+        "marketDrop", "repayAmount", "addCollateral"
+    ];
+
+    var state = {
+        payoutFreq: 1,
+        strategyMode: "reinvest"
+    };
+
+    function $(id) { return document.getElementById(id); }
+    function num(id) { return Number($(id).value) || 0; }
+
+    function fmt(n) {
+        if (!isFinite(n) || isNaN(n)) return "0";
+        return Math.round(n).toLocaleString("zh-TW");
+    }
+
+    // 連動 number 與 range
+    pairs.forEach(function (id) {
+        var input = $(id);
+        var range = $(id + "Range");
+        if (input && range) {
+            input.addEventListener("input", function () { range.value = input.value; calc(); });
+            range.addEventListener("input", function () { input.value = range.value; calc(); });
+        }
+    });
+
+    // 配息頻率按鈕
+    setupSeg("payoutFreq", function (val) { state.payoutFreq = Number(val); });
+    // 策略模式按鈕
+    setupSeg("strategyMode", function (val) {
+        state.strategyMode = val;
+        updateStrategyHint();
+    });
+
+    function setupSeg(groupId, onSelect) {
+        var group = $(groupId);
+        group.querySelectorAll("button").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                group.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+                btn.classList.add("active");
+                onSelect(btn.getAttribute("data-val"));
+                calc();
+            });
+        });
+    }
+
+    function updateStrategyHint() {
+        var hint = $("strategyHint");
+        if (state.strategyMode === "reinvest") {
+            hint.textContent = "質押再投入：以「自有本金＋信貸」為基礎，依成數質押借出，再全部投入。總投入 = 本金 + 質押借款。";
+        } else {
+            hint.textContent = "金主方案：由金主補足資金再一同質押，使最終投入後的質押成數恰好等於設定值。總投入 = 本金 ÷ (1 − 質押成數)。";
+        }
+    }
+
+    function calc() {
+        var lAmt = num("loanAmount");
+        var oAmt = num("ownCapital");
+        var totalBase = lAmt + oAmt;             // 合併總本金
+        var lRate = num("loanRate") / 100;
+        var years = num("loanYears");
+        var iRate = num("investRate") / 100;
+        var pRatio = num("pledgeRatio") / 100;
+        var pRate = num("pledgeRate") / 100;
+        var freq = state.payoutFreq;
+
+        var months = years * 12;
+
+        // --- 第一層槓桿：信貸 (本利攤還，僅針對信貸金額) ---
+        var mRate = lRate / 12;
+        var monthlyPmt = 0;
+        if (lAmt > 0 && months > 0) {
+            if (mRate === 0) {
+                monthlyPmt = lAmt / months;
+            } else {
+                monthlyPmt = lAmt * (mRate * Math.pow(1 + mRate, months)) / (Math.pow(1 + mRate, months) - 1);
+            }
+        }
+        var totalLoanInt = lAmt > 0 ? (monthlyPmt * months) - lAmt : 0;
+
+        // --- 第二層槓桿：質押 ---
+        var pledgeAmt = 0, totalInvest = 0, sponsorAmt = 0;
+        if (state.strategyMode === "reinvest") {
+            pledgeAmt = totalBase * pRatio;
+            totalInvest = totalBase + pledgeAmt;
+        } else {
+            sponsorAmt = (pRatio >= 1) ? 0 : (totalBase * pRatio) / (1 - pRatio);
+            totalInvest = totalBase + sponsorAmt;
+            pledgeAmt = totalInvest * pRatio;
+        }
+
+        var monthlyPledgeInt = (pledgeAmt * pRate) / 12;
+        var totalPledgeInt = monthlyPledgeInt * months;
+
+        // --- 投資與套利 ---
+        var baseMonthlyInc = (totalInvest * iRate) / 12;   // 單次基準配息
+        var monthlyInc = baseMonthlyInc * freq;            // 每月總配息
+
+        var totalIntCosts = totalLoanInt + totalPledgeInt;
+        var cashFlow = monthlyInc - monthlyPmt - monthlyPledgeInt;
+        var leverage = totalBase > 0 ? (totalInvest / totalBase) : 0;   // 總投入 ÷ (自有本金 + 信貸金額)
+
+        // ---------- 壓力測試 ----------
+        var drop = num("marketDrop") / 100;
+        var repay = num("repayAmount");        // 還款：減少分子（借款）
+        var addColl = num("addCollateral");    // 補保證金：墊高分母（剩餘資產）
+        var stressedValue = totalInvest * (1 - drop) + addColl;
+        var pledgeAfter = Math.max(0, pledgeAmt - repay);
+
+        // ---------- 每年損益（年均） ----------
+        var annualIncome = monthlyInc * 12;
+        var annualInterest = years > 0 ? totalIntCosts / years : 0;
+        var annualProfit = annualIncome - annualInterest;
+
+        // ---------- 輸出 ----------
+        // 每月現金流
+        setVal("cashFlow", fmt(cashFlow), cashFlow >= 0 ? "pos" : "neg");
+        $("cashFlowSub").textContent = cashFlow >= 0
+            ? "每月正向進帳，配息足以覆蓋所有月付成本"
+            : "每月需自掏腰包補貼，請留意現金流壓力";
+        toggleHero("cashFlowCard", cashFlow >= 0);
+
+        $("monthlyIncome").textContent = fmt(monthlyInc);
+        $("incomeSub").textContent = "單次 " + fmt(baseMonthlyInc) + " 元 × 每月 " + freq + " 次";
+        $("monthlyPayment").textContent = fmt(monthlyPmt);
+
+        $("pledgeAmount").textContent = fmt(pledgeAmt);
+        $("pledgeSub").textContent = state.strategyMode === "sponsor"
+            ? ("含金主出資 " + fmt(sponsorAmt) + " 元")
+            : "以總本金 × 成數借出";
+        $("pledgeInterest").textContent = fmt(monthlyPledgeInt);
+
+        $("totalInvestment").textContent = fmt(totalInvest);
+        $("leverage").textContent = leverage > 0 ? leverage.toFixed(2) + "x" : "—";
+
+        // 每年損益（年均）
+        setVal("netProfit", fmt(annualProfit), annualProfit >= 0 ? "pos" : "neg");
+        var roi = totalBase > 0 ? (annualProfit / totalBase) * 100 : 0;
+        $("roiSub").textContent = "年均報酬率約 " + roi.toFixed(1) + "%（相對總本金 " + fmt(totalBase) + " 元）";
+        toggleHero("profitCard", annualProfit >= 0);
+
+        $("totalIncome").textContent = fmt(annualIncome);
+        $("totalInterest").textContent = fmt(annualInterest);
+
+        // 壓力測試輸出
+        $("stressedValue").textContent = fmt(stressedValue);
+        var stressedParts = [];
+        if (drop > 0) stressedParts.push("下跌 " + (drop * 100).toFixed(0) + "%");
+        if (addColl > 0) stressedParts.push("加碼 " + fmt(addColl));
+        $("stressedSub").textContent = stressedParts.length ? stressedParts.join("，") : "未設定下跌情境";
+
+        var ratioEl = $("maintenanceRatio");
+        var alertEl = $("stressAlert");
+        var msgEl = $("stressMsg");
+
+        // 質押維持率 = 借款 ÷ (本金 − 帳戶虧損) = 借款 ÷ 剩餘資產，越高越危險
+        ratioEl.style.removeProperty("color");
+        var ratio;
+        var fillColor = "linear-gradient(180deg,#34d399,#10b981)"; // 綠：安全
+
+        if (pledgeAfter <= 0) {
+            ratio = 0;
+            ratioEl.textContent = "無質押";
+            ratioEl.className = "v";
+            setAlert(alertEl, msgEl, "safe", "✓", "目前無質押借款（或已全數還清），不存在補繳風險。");
+        } else if (stressedValue <= 0) {
+            ratio = Infinity;
+            ratioEl.textContent = "≥ 100%";
+            ratioEl.className = "v neg";
+            fillColor = "linear-gradient(180deg,#fb7185,#e11d48)";
+            setAlert(alertEl, msgEl, "danger", "⚠", "補繳：資產價值已歸零，質押借款全額曝險，必遭強制平倉。");
+        } else {
+            ratio = pledgeAfter / stressedValue;
+            ratioEl.textContent = (ratio * 100).toFixed(0) + "%";
+            if (ratio >= MARGIN_CALL) {
+                ratioEl.className = "v neg";
+                fillColor = "linear-gradient(180deg,#fb7185,#e11d48)";
+                setAlert(alertEl, msgEl, "danger", "⚠",
+                    "補繳：維持率達 " + (MARGIN_CALL * 100) + "% 以上，已觸發補繳 (Margin Call)，須降低借貸（還款）或單追（加碼），否則恐遭強制平倉。");
+            } else if (ratio >= NOTIFY_LINE) {
+                ratioEl.className = "v";
+                ratioEl.style.color = "var(--amber)";
+                fillColor = "linear-gradient(180deg,#fbbf24,#f59e0b)";
+                setAlert(alertEl, msgEl, "warn", "！",
+                    "通知：維持率介於 " + (NOTIFY_LINE * 100) + "%~" + (MARGIN_CALL * 100) + "%（券商通知區間），市場再下跌即觸發補繳，建議提前還款。");
+            } else {
+                ratioEl.className = "v pos";
+                setAlert(alertEl, msgEl, "safe", "✓",
+                    "安全：維持率低於 " + (NOTIFY_LINE * 100) + "%，於此下跌情境下仍具備擔保緩衝。");
+            }
+        }
+
+        // ---- 橫向長條圖 (借款佔剩餘資產的比例) ----
+        var fillPct = (ratio === Infinity) ? 100 : Math.min(ratio * 100, 100);
+        var barFill = $("barFill");
+        barFill.style.width = fillPct + "%";
+        barFill.style.background = fillColor;
+        $("barNow").textContent = "目前 " + (ratio === Infinity ? "≥100" : (ratio * 100).toFixed(0)) + "%";
+
+        // ---- 回到目標水位所需金額（兩種方式：還款 / 補保證金）----
+        // 還款：使 (借款 − x) / 資產 = T  →  x = 借款 − T×資產（上限為全額借款）
+        function repayNeed(T) {
+            if (pledgeAfter <= 0) return 0;
+            return Math.min(pledgeAfter, Math.max(0, pledgeAfter - T * stressedValue));
+        }
+        // 補保證金：使 借款 / (資產 + y) = T  →  y = 借款/T − 資產
+        function collNeed(T) {
+            if (pledgeAfter <= 0) return 0;
+            return Math.max(0, pledgeAfter / T - stressedValue);
+        }
+        $("repay85").textContent = fmt(repayNeed(MARGIN_CALL));
+        $("coll85").textContent  = fmt(collNeed(MARGIN_CALL));
+        $("repay60").textContent = fmt(repayNeed(SAFE_LEVEL));
+        $("coll60").textContent  = fmt(collNeed(SAFE_LEVEL));
+
+        var note = $("adviceNote");
+        if (pledgeAfter <= 0) {
+            note.textContent = "目前無質押借款，無補繳需求。";
+        } else if (repayNeed(MARGIN_CALL) === 0) {
+            note.textContent = (repayNeed(SAFE_LEVEL) === 0)
+                ? "目前維持率已優於 70% 安全水位，無須補繳。"
+                : "目前已在 85% 補繳線內；若想更穩健，可選下列任一方式回到 70% 水位。";
+        } else {
+            note.textContent = "兩種方式擇一即可：「降低借貸（還款）」直接沖銷借款本金、降低分子；「單追（加碼）」增加擔保資產、墊高分母。金額為目前下跌情境下回到該水位所需的額外投入。";
+        }
+    }
+
+    function setVal(id, text, cls) {
+        var el = $(id);
+        el.textContent = text;
+        el.className = "v " + (cls || "");
+    }
+
+    function toggleHero(id, positive) {
+        var el = $(id);
+        el.classList.remove("pos", "neg");
+        el.classList.add(positive ? "pos" : "neg");
+    }
+
+    function setAlert(alertEl, msgEl, type, icon, msg) {
+        alertEl.className = "alert " + type;
+        alertEl.querySelector(".big").textContent = icon;
+        msgEl.textContent = msg;
+    }
+
+    // 初始化
+    updateStrategyHint();
+    calc();
+})();
+</script>
 </body>
 </html>
